@@ -1,0 +1,617 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ADDEND — Precision Adding Machine</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;0,900;1,400&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+    <style>
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+        :root {
+            --bg:             #060A14;
+            --surface:        #0C1220;
+            --surface-raised: #111827;
+            --gold:           #C8A84B;
+            --gold-bright:    #F0CC6A;
+            --gold-dim:       #4A3B1A;
+            --gold-glow:      rgba(200, 168, 75, 0.12);
+            --cream:          #EAD7A8;
+            --cream-dim:      #8A7B5E;
+            --red:            #C85050;
+            --shadow:         rgba(0, 0, 0, 0.7);
+        }
+
+        body {
+            background: var(--bg);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            font-family: 'DM Mono', monospace;
+            color: var(--cream);
+            padding: 2rem 1rem;
+            position: relative;
+            overflow-x: hidden;
+        }
+
+        /* Radial ambient glow */
+        body::after {
+            content: '';
+            position: fixed;
+            top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            width: 900px; height: 700px;
+            background: radial-gradient(ellipse, var(--gold-glow) 0%, transparent 65%);
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        /* SVG grain texture overlay */
+        body::before {
+            content: '';
+            position: fixed;
+            inset: 0;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='300' height='300' filter='url(%23n)' opacity='0.035'/%3E%3C/svg%3E");
+            pointer-events: none;
+            z-index: 999;
+        }
+
+        /* ─── Wrapper ─── */
+        .wrapper {
+            position: relative;
+            z-index: 1;
+            width: 100%;
+            max-width: 660px;
+            animation: revealUp 0.7s cubic-bezier(0.16,1,0.3,1) both;
+        }
+
+        @keyframes revealUp {
+            from { opacity: 0; transform: translateY(28px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+
+        /* ─── Header ─── */
+        .header {
+            text-align: center;
+            margin-bottom: 2rem;
+            animation: revealUp 0.7s 0.1s cubic-bezier(0.16,1,0.3,1) both;
+        }
+
+        .header-row {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 1rem;
+            margin-bottom: 0.4rem;
+        }
+
+        .header-line {
+            flex: 1;
+            height: 1px;
+            max-width: 90px;
+        }
+        .header-line.left  { background: linear-gradient(to right, transparent, var(--gold-dim), var(--gold)); }
+        .header-line.right { background: linear-gradient(to left,  transparent, var(--gold-dim), var(--gold)); }
+
+        .header-gem { color: var(--gold); font-size: 0.65rem; letter-spacing: 0.4em; }
+
+        .title {
+            font-family: 'Playfair Display', serif;
+            font-size: clamp(2.2rem, 8vw, 3.2rem);
+            font-weight: 900;
+            letter-spacing: 0.35em;
+            color: var(--gold);
+            text-transform: uppercase;
+            line-height: 1;
+        }
+
+        .subtitle {
+            font-size: 0.58rem;
+            letter-spacing: 0.5em;
+            color: var(--cream-dim);
+            text-transform: uppercase;
+            margin-top: 0.5rem;
+        }
+
+        /* ─── Machine grid ─── */
+        .machine {
+            display: grid;
+            grid-template-columns: 1fr 190px;
+            gap: 1.25rem;
+            align-items: start;
+        }
+
+        @media (max-width: 540px) {
+            .machine { grid-template-columns: 1fr; }
+            .tape     { max-height: 200px; }
+        }
+
+        /* ─── Calculator card ─── */
+        .calculator {
+            background: var(--surface);
+            border: 1px solid var(--gold-dim);
+            box-shadow:
+                0 0 0 1px rgba(200,168,75,0.06),
+                0 24px 64px rgba(0,0,0,0.85),
+                inset 0 1px 0 rgba(200,168,75,0.08);
+            position: relative;
+            animation: revealUp 0.7s 0.15s cubic-bezier(0.16,1,0.3,1) both;
+        }
+
+        /* Art deco corner brackets */
+        .calculator::before, .calculator::after {
+            content: '';
+            position: absolute;
+            width: 14px; height: 14px;
+            border-color: var(--gold);
+            border-style: solid;
+            opacity: 0.6;
+        }
+        .calculator::before { top: 7px; left: 7px;      border-width: 1px 0 0 1px; }
+        .calculator::after  { bottom: 7px; right: 7px;  border-width: 0 1px 1px 0; }
+
+        /* ─── Display ─── */
+        .display {
+            padding: 1.4rem 1.4rem 1.1rem;
+            border-bottom: 1px solid var(--gold-dim);
+        }
+
+        .label {
+            font-size: 0.52rem;
+            letter-spacing: 0.45em;
+            text-transform: uppercase;
+            color: var(--cream-dim);
+            margin-bottom: 0.25rem;
+        }
+
+        .display-total {
+            font-family: 'DM Mono', monospace;
+            font-size: 1.35rem;
+            font-weight: 400;
+            color: var(--gold);
+            text-align: right;
+            letter-spacing: 0.04em;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            min-height: 2rem;
+            opacity: 0.9;
+            transition: color 0.2s;
+        }
+
+        .display-divider {
+            display: flex;
+            align-items: center;
+            gap: 0.6rem;
+            margin: 0.85rem 0;
+        }
+        .div-line { flex: 1; height: 1px; background: linear-gradient(to right, transparent, var(--gold-dim)); }
+        .div-plus { color: var(--gold); font-size: 0.85rem; }
+
+        .display-input {
+            font-family: 'DM Mono', monospace;
+            font-size: clamp(2rem, 7vw, 2.8rem);
+            font-weight: 300;
+            color: var(--cream);
+            text-align: right;
+            letter-spacing: 0.02em;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            min-height: 3.6rem;
+            line-height: 1.2;
+            transition: color 0.15s;
+        }
+
+        .display-input.flash {
+            animation: inpFlash 0.25s ease;
+        }
+
+        @keyframes inpFlash {
+            0%   { color: var(--cream); }
+            45%  { color: var(--gold-bright); }
+            100% { color: var(--cream); }
+        }
+
+        /* ─── Keypad ─── */
+        .keypad {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 1px;
+            background: var(--gold-dim);
+            border-top: 1px solid var(--gold-dim);
+        }
+
+        .key {
+            background: var(--surface);
+            border: none;
+            color: var(--cream);
+            font-family: 'DM Mono', monospace;
+            font-size: 1rem;
+            font-weight: 400;
+            padding: 1.05rem 0.4rem;
+            cursor: pointer;
+            position: relative;
+            overflow: hidden;
+            letter-spacing: 0.04em;
+            user-select: none;
+            transition: background 0.08s;
+        }
+
+        .key span { position: relative; z-index: 1; }
+
+        .key::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: var(--gold);
+            opacity: 0;
+            transition: opacity 0.08s;
+        }
+        .key:hover::after  { opacity: 0.07; }
+        .key:active        { transform: scale(0.93); }
+        .key:active::after { opacity: 0.17; }
+
+        .key.digit { color: var(--cream); }
+
+        .key.op {
+            background: var(--surface-raised);
+            color: var(--gold);
+        }
+
+        .key.key-plus {
+            font-size: 1.35rem;
+        }
+
+        .key.key-clear { color: var(--red); }
+
+        .key.key-zero { grid-column: span 2; }
+
+        .key.key-equals {
+            background: var(--gold);
+            color: var(--bg);
+            font-size: 1.5rem;
+            font-weight: 700;
+        }
+        .key.key-equals:hover::after { opacity: 0.1; }
+        .key.key-equals.fired {
+            animation: eqFire 0.4s ease;
+        }
+
+        @keyframes eqFire {
+            0%   { background: var(--gold); }
+            40%  { background: var(--gold-bright); box-shadow: 0 0 30px rgba(240,204,106,0.5); }
+            100% { background: var(--gold); }
+        }
+
+        /* ─── Tape panel ─── */
+        .tape {
+            background: var(--surface);
+            border: 1px solid var(--gold-dim);
+            box-shadow:
+                0 0 0 1px rgba(200,168,75,0.05),
+                0 24px 64px rgba(0,0,0,0.8);
+            display: flex;
+            flex-direction: column;
+            max-height: 380px;
+            min-height: 160px;
+            animation: revealUp 0.7s 0.25s cubic-bezier(0.16,1,0.3,1) both;
+            position: relative;
+        }
+
+        .tape::before, .tape::after {
+            content: '';
+            position: absolute;
+            width: 12px; height: 12px;
+            border-color: var(--gold);
+            border-style: solid;
+            opacity: 0.5;
+        }
+        .tape::before { top: 6px; left: 6px;      border-width: 1px 0 0 1px; }
+        .tape::after  { bottom: 6px; right: 6px;  border-width: 0 1px 1px 0; }
+
+        .tape-hd {
+            padding: 0.7rem 1rem;
+            border-bottom: 1px solid var(--gold-dim);
+            font-size: 0.52rem;
+            letter-spacing: 0.45em;
+            text-transform: uppercase;
+            color: var(--cream-dim);
+            flex-shrink: 0;
+        }
+
+        .tape-body {
+            flex: 1;
+            overflow-y: auto;
+            padding: 0.4rem 0;
+            scrollbar-width: thin;
+            scrollbar-color: var(--gold-dim) transparent;
+        }
+
+        .tape-body::-webkit-scrollbar       { width: 3px; }
+        .tape-body::-webkit-scrollbar-track { background: transparent; }
+        .tape-body::-webkit-scrollbar-thumb { background: var(--gold-dim); border-radius: 2px; }
+
+        .tape-empty {
+            text-align: center;
+            color: var(--cream-dim);
+            font-size: 0.62rem;
+            letter-spacing: 0.25em;
+            padding: 2rem 1rem;
+            opacity: 0.45;
+        }
+
+        .tape-row {
+            display: flex;
+            align-items: baseline;
+            justify-content: space-between;
+            padding: 0.3rem 1rem;
+            border-bottom: 1px solid rgba(200,168,75,0.04);
+            animation: rowSlide 0.2s ease both;
+        }
+
+        @keyframes rowSlide {
+            from { opacity: 0; transform: translateX(-6px); }
+            to   { opacity: 1; transform: translateX(0); }
+        }
+
+        .tape-row.add .tape-sym  { color: var(--gold); font-size: 0.8rem; }
+        .tape-row.add .tape-num  { color: var(--cream); font-size: 0.78rem; font-weight: 300; }
+
+        .tape-row.total {
+            border-top: 1px solid var(--gold-dim);
+            margin-top: 0.25rem;
+            padding-top: 0.45rem;
+        }
+        .tape-row.total .tape-sym { color: var(--cream-dim); font-size: 0.52rem; letter-spacing: 0.3em; text-transform: uppercase; }
+        .tape-row.total .tape-num { color: var(--gold-bright); font-size: 0.92rem; font-weight: 500; }
+
+        /* ─── Footer hint ─── */
+        .hint {
+            text-align: center;
+            margin-top: 1.4rem;
+            font-size: 0.52rem;
+            letter-spacing: 0.32em;
+            color: var(--cream-dim);
+            opacity: 0.4;
+            text-transform: uppercase;
+            animation: revealUp 0.7s 0.35s cubic-bezier(0.16,1,0.3,1) both;
+        }
+    </style>
+</head>
+<body>
+
+<div class="wrapper">
+
+    <!-- Header -->
+    <div class="header">
+        <div class="header-row">
+            <div class="header-line left"></div>
+            <div class="header-gem">◈ ◈ ◈</div>
+            <div class="header-line right"></div>
+        </div>
+        <div class="title">Addend</div>
+        <div class="subtitle">Precision Adding Machine &nbsp;·&nbsp; Est. MMXXVI</div>
+    </div>
+
+    <!-- Machine -->
+    <div class="machine">
+
+        <!-- Calculator -->
+        <div class="calculator">
+            <div class="display">
+                <div class="label">Running Total</div>
+                <div class="display-total" id="dispTotal">0</div>
+                <div class="display-divider">
+                    <div class="div-line"></div>
+                    <div class="div-plus">+</div>
+                </div>
+                <div class="label">Current Entry</div>
+                <div class="display-input" id="dispInput">0</div>
+            </div>
+
+            <div class="keypad">
+                <!-- Row 1 -->
+                <button class="key digit" onclick="pressDigit('7')"><span>7</span></button>
+                <button class="key digit" onclick="pressDigit('8')"><span>8</span></button>
+                <button class="key digit" onclick="pressDigit('9')"><span>9</span></button>
+                <button class="key op key-clear" onclick="pressClear()"><span>C</span></button>
+                <!-- Row 2 -->
+                <button class="key digit" onclick="pressDigit('4')"><span>4</span></button>
+                <button class="key digit" onclick="pressDigit('5')"><span>5</span></button>
+                <button class="key digit" onclick="pressDigit('6')"><span>6</span></button>
+                <button class="key op" onclick="pressBackspace()"><span>⌫</span></button>
+                <!-- Row 3 -->
+                <button class="key digit" onclick="pressDigit('1')"><span>1</span></button>
+                <button class="key digit" onclick="pressDigit('2')"><span>2</span></button>
+                <button class="key digit" onclick="pressDigit('3')"><span>3</span></button>
+                <button class="key op key-plus" onclick="pressPlus()"><span>+</span></button>
+                <!-- Row 4 -->
+                <button class="key digit key-zero" onclick="pressDigit('0')"><span>0</span></button>
+                <button class="key op" onclick="pressDecimal()"><span>.</span></button>
+                <button class="key key-equals" id="btnEq" onclick="pressEquals()"><span>=</span></button>
+            </div>
+        </div>
+
+        <!-- Tape -->
+        <div class="tape">
+            <div class="tape-hd">Addition Tape</div>
+            <div class="tape-body" id="tapeBody">
+                <div class="tape-empty" id="tapeEmpty">— no entries —</div>
+            </div>
+        </div>
+
+    </div>
+
+    <div class="hint">Keyboard supported &nbsp;·&nbsp; numerals · + · enter · backspace · esc</div>
+
+</div>
+
+<script>
+    /* ── State ── */
+    const S = {
+        input:        '0',
+        total:        0,
+        tape:         [],      // [{type:'add'|'total', value:Number}]
+        hasDecimal:   false,
+        justFinished: false,   // after = was pressed; next digit starts fresh
+    };
+
+    /* ── Helpers ── */
+    function fmtNum(n) {
+        if (!isFinite(n)) return '—';
+        const abs = Math.abs(n);
+        const opts = abs === Math.floor(abs)
+            ? {}
+            : { minimumFractionDigits: 2, maximumFractionDigits: 10 };
+        return n.toLocaleString('en-US', opts);
+    }
+
+    /* ── Render ── */
+    function render() {
+        // Input display: show raw string (preserves trailing dot while typing)
+        document.getElementById('dispInput').textContent = S.input;
+        // Total display
+        document.getElementById('dispTotal').textContent = fmtNum(S.total);
+
+        // Tape
+        const body  = document.getElementById('tapeBody');
+        const empty = document.getElementById('tapeEmpty');
+        // Clear existing rows (keep the empty placeholder in DOM)
+        body.querySelectorAll('.tape-row').forEach(r => r.remove());
+
+        if (S.tape.length === 0) {
+            empty.style.display = '';
+        } else {
+            empty.style.display = 'none';
+            S.tape.forEach(entry => {
+                const row = document.createElement('div');
+                row.className = `tape-row ${entry.type}`;
+                if (entry.type === 'add') {
+                    row.innerHTML =
+                        `<span class="tape-sym">+</span>` +
+                        `<span class="tape-num">${fmtNum(entry.value)}</span>`;
+                } else {
+                    row.innerHTML =
+                        `<span class="tape-sym">Total</span>` +
+                        `<span class="tape-num">${fmtNum(entry.value)}</span>`;
+                }
+                body.appendChild(row);
+            });
+            body.scrollTop = body.scrollHeight;
+        }
+    }
+
+    /* ── Actions ── */
+    function pressDigit(d) {
+        if (S.justFinished) {
+            S.input        = d === '0' ? '0' : d;
+            S.hasDecimal   = false;
+            S.justFinished = false;
+        } else if (S.input === '0' && d !== '.') {
+            S.input = d;
+        } else if (S.input.replace('.', '').replace('-', '').length < 12) {
+            S.input += d;
+        }
+        render();
+    }
+
+    function pressDecimal() {
+        if (S.justFinished) {
+            S.input        = '0.';
+            S.hasDecimal   = true;
+            S.justFinished = false;
+            render();
+            return;
+        }
+        if (!S.input.includes('.')) {
+            S.input     += '.';
+            S.hasDecimal = true;
+        }
+        render();
+    }
+
+    function pressPlus() {
+        const val = parseFloat(S.input) || 0;
+        S.total      += val;
+        S.tape.push({ type: 'add', value: val });
+        S.input        = '0';
+        S.hasDecimal   = false;
+        S.justFinished = false;
+
+        // Flash input
+        const el = document.getElementById('dispInput');
+        el.classList.remove('flash');
+        void el.offsetWidth;          // reflow
+        el.classList.add('flash');
+
+        render();
+    }
+
+    function pressEquals() {
+        // Commit whatever is currently in input
+        const val = parseFloat(S.input) || 0;
+        if (val !== 0 || S.tape.length === 0 || S.tape[S.tape.length - 1].type === 'total') {
+            S.total += val;
+            S.tape.push({ type: 'add', value: val });
+        }
+        S.tape.push({ type: 'total', value: S.total });
+        S.input        = fmtNum(S.total).replace(/,/g, '');
+        S.justFinished = true;
+
+        // Flash equals button
+        const btn = document.getElementById('btnEq');
+        btn.classList.remove('fired');
+        void btn.offsetWidth;
+        btn.classList.add('fired');
+
+        render();
+    }
+
+    function pressClear() {
+        S.input        = '0';
+        S.total        = 0;
+        S.tape         = [];
+        S.hasDecimal   = false;
+        S.justFinished = false;
+        render();
+    }
+
+    function pressBackspace() {
+        if (S.justFinished) {
+            S.input        = '0';
+            S.justFinished = false;
+            render();
+            return;
+        }
+        if (S.input.length > 1) {
+            S.input      = S.input.slice(0, -1);
+            S.hasDecimal = S.input.includes('.');
+        } else {
+            S.input      = '0';
+            S.hasDecimal = false;
+        }
+        render();
+    }
+
+    /* ── Keyboard ── */
+    document.addEventListener('keydown', e => {
+        if (e.ctrlKey || e.metaKey || e.altKey) return;
+        if (e.key >= '0' && e.key <= '9')  { pressDigit(e.key);  return; }
+        switch (e.key) {
+            case '.': case ',':  pressDecimal();  break;
+            case '+':            pressPlus();     break;
+            case 'Enter': case '=': pressEquals(); break;
+            case 'Backspace':    pressBackspace(); break;
+            case 'Escape': case 'Delete': pressClear(); break;
+        }
+    });
+
+    /* ── Init ── */
+    render();
+</script>
+</body>
+</html>
