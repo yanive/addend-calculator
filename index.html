@@ -262,7 +262,7 @@
             color: var(--gold);
         }
 
-        .key.key-plus {
+        .key.key-plus, .key.key-minus {
             font-size: 1.35rem;
         }
 
@@ -361,6 +361,9 @@
         .tape-row.add .tape-sym  { color: var(--gold); font-size: 0.8rem; }
         .tape-row.add .tape-num  { color: var(--cream); font-size: 0.78rem; font-weight: 300; }
 
+        .tape-row.sub .tape-sym  { color: var(--red); font-size: 0.8rem; }
+        .tape-row.sub .tape-num  { color: var(--cream); font-size: 0.78rem; font-weight: 300; }
+
         .tape-row.total {
             border-top: 1px solid var(--gold-dim);
             margin-top: 0.25rem;
@@ -394,7 +397,7 @@
             <div class="header-line right"></div>
         </div>
         <div class="title">Addend</div>
-        <div class="subtitle">Precision Adding Machine &nbsp;·&nbsp; Est. MMXXVI</div>
+        <div class="subtitle">Precision Calculator &nbsp;·&nbsp; Est. MMXXVI</div>
     </div>
 
     <!-- Machine -->
@@ -407,7 +410,7 @@
                 <div class="display-total" id="dispTotal">0</div>
                 <div class="display-divider">
                     <div class="div-line"></div>
-                    <div class="div-plus">+</div>
+                    <div class="div-plus" id="divOp">+</div>
                 </div>
                 <div class="label">Current Entry</div>
                 <div class="display-input" id="dispInput">0</div>
@@ -430,7 +433,8 @@
                 <button class="key digit" onclick="pressDigit('3')"><span>3</span></button>
                 <button class="key op key-plus" onclick="pressPlus()"><span>+</span></button>
                 <!-- Row 4 -->
-                <button class="key digit key-zero" onclick="pressDigit('0')"><span>0</span></button>
+                <button class="key digit" onclick="pressDigit('0')"><span>0</span></button>
+                <button class="key op key-minus" onclick="pressMinus()"><span>−</span></button>
                 <button class="key op" onclick="pressDecimal()"><span>.</span></button>
                 <button class="key key-equals" id="btnEq" onclick="pressEquals()"><span>=</span></button>
             </div>
@@ -438,7 +442,7 @@
 
         <!-- Tape -->
         <div class="tape">
-            <div class="tape-hd">Addition Tape</div>
+            <div class="tape-hd">Calculation Tape</div>
             <div class="tape-body" id="tapeBody">
                 <div class="tape-empty" id="tapeEmpty">— no entries —</div>
             </div>
@@ -446,7 +450,7 @@
 
     </div>
 
-    <div class="hint">Keyboard supported &nbsp;·&nbsp; numerals · + · enter · backspace · esc</div>
+    <div class="hint">Keyboard supported &nbsp;·&nbsp; numerals · + · − · enter · backspace · esc</div>
 
 </div>
 
@@ -455,9 +459,10 @@
     const S = {
         input:        '0',
         total:        0,
-        tape:         [],      // [{type:'add'|'total', value:Number}]
+        tape:         [],      // [{type:'add'|'sub'|'total', value:Number}]
         hasDecimal:   false,
         justFinished: false,   // after = was pressed; next digit starts fresh
+        lastOp:       '+',     // last operation pressed, for divider display
     };
 
     /* ── Helpers ── */
@@ -476,6 +481,7 @@
         document.getElementById('dispInput').textContent = S.input;
         // Total display
         document.getElementById('dispTotal').textContent = fmtNum(S.total);
+        document.getElementById('divOp').textContent = S.lastOp;
 
         // Tape
         const body  = document.getElementById('tapeBody');
@@ -493,6 +499,10 @@
                 if (entry.type === 'add') {
                     row.innerHTML =
                         `<span class="tape-sym">+</span>` +
+                        `<span class="tape-num">${fmtNum(entry.value)}</span>`;
+                } else if (entry.type === 'sub') {
+                    row.innerHTML =
+                        `<span class="tape-sym">−</span>` +
                         `<span class="tape-num">${fmtNum(entry.value)}</span>`;
                 } else {
                     row.innerHTML =
@@ -537,6 +547,7 @@
     function pressPlus() {
         const val = parseFloat(S.input) || 0;
         S.total      += val;
+        S.lastOp      = '+';
         S.tape.push({ type: 'add', value: val });
         S.input        = '0';
         S.hasDecimal   = false;
@@ -546,6 +557,24 @@
         const el = document.getElementById('dispInput');
         el.classList.remove('flash');
         void el.offsetWidth;          // reflow
+        el.classList.add('flash');
+
+        render();
+    }
+
+    function pressMinus() {
+        const val = parseFloat(S.input) || 0;
+        S.total      -= val;
+        S.lastOp      = '−';
+        S.tape.push({ type: 'sub', value: val });
+        S.input        = '0';
+        S.hasDecimal   = false;
+        S.justFinished = false;
+
+        // Flash input
+        const el = document.getElementById('dispInput');
+        el.classList.remove('flash');
+        void el.offsetWidth;
         el.classList.add('flash');
 
         render();
@@ -604,6 +633,7 @@
         switch (e.key) {
             case '.': case ',':  pressDecimal();  break;
             case '+':            pressPlus();     break;
+            case '-':            pressMinus();    break;
             case 'Enter': case '=': pressEquals(); break;
             case 'Backspace':    pressBackspace(); break;
             case 'Escape': case 'Delete': pressClear(); break;
