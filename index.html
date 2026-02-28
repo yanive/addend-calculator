@@ -382,6 +382,31 @@
         .tape-row.total .tape-sym { color: var(--cream-dim); font-size: 0.52rem; letter-spacing: 0.3em; text-transform: uppercase; }
         .tape-row.total .tape-num { color: var(--gold-bright); font-size: 0.92rem; font-weight: 500; }
 
+        /* ─── Result = 100 white mode ─── */
+        .calculator.result-100 {
+            background: #F5F0E8;
+            border-color: #C8A84B;
+            box-shadow:
+                0 0 0 1px rgba(200,168,75,0.3),
+                0 24px 64px rgba(200,168,75,0.25),
+                inset 0 1px 0 rgba(255,255,255,0.8);
+            transition: background 0.5s ease, box-shadow 0.5s ease;
+        }
+        .calculator.result-100 .display {
+            background: #F5F0E8;
+            border-bottom-color: #C8A84B;
+        }
+        .calculator.result-100 .display-total  { color: #3A2A00; }
+        .calculator.result-100 .display-input  { color: #1A1000; }
+        .calculator.result-100 .label          { color: #7A6A40; }
+        .calculator.result-100 .div-plus       { color: #C8A84B; }
+        .calculator.result-100 .div-line       { background: linear-gradient(to right, transparent, #C8A84B); }
+        .calculator.result-100 .key            { background: #EDE8DC; color: #2A1F00; }
+        .calculator.result-100 .key.op         { background: #DDD5C0; color: #7A5A00; }
+        .calculator.result-100 .key.key-clear  { color: #C85050; }
+        .calculator.result-100 .key.key-equals { background: #C8A84B; color: #fff; }
+        .calculator.result-100 .keypad         { background: #C8A84B; }
+
         /* ─── Footer hint ─── */
         .hint {
             text-align: center;
@@ -496,6 +521,7 @@
         // Total display
         document.getElementById('dispTotal').textContent = fmtNum(S.total);
         document.getElementById('divOp').textContent = S.lastOp;
+        document.querySelector('.calculator').classList.toggle('result-100', S.total === 100);
 
         // Tape
         const body  = document.getElementById('tapeBody');
