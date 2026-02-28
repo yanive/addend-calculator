@@ -262,7 +262,7 @@
             color: var(--gold);
         }
 
-        .key.key-plus, .key.key-minus {
+        .key.key-plus, .key.key-minus, .key.key-multiply {
             font-size: 1.35rem;
         }
 
@@ -275,6 +275,7 @@
             color: var(--bg);
             font-size: 1.5rem;
             font-weight: 700;
+            grid-column: span 4;
         }
         .key.key-equals:hover::after { opacity: 0.1; }
         .key.key-equals.fired {
@@ -364,6 +365,9 @@
         .tape-row.sub .tape-sym  { color: var(--red); font-size: 0.8rem; }
         .tape-row.sub .tape-num  { color: var(--cream); font-size: 0.78rem; font-weight: 300; }
 
+        .tape-row.mul .tape-sym  { color: #7EB8C9; font-size: 0.8rem; }
+        .tape-row.mul .tape-num  { color: var(--cream); font-size: 0.78rem; font-weight: 300; }
+
         .tape-row.total {
             border-top: 1px solid var(--gold-dim);
             margin-top: 0.25rem;
@@ -435,7 +439,9 @@
                 <!-- Row 4 -->
                 <button class="key digit" onclick="pressDigit('0')"><span>0</span></button>
                 <button class="key op key-minus" onclick="pressMinus()"><span>−</span></button>
+                <button class="key op key-multiply" onclick="pressMultiply()"><span>×</span></button>
                 <button class="key op" onclick="pressDecimal()"><span>.</span></button>
+                <!-- Row 5 -->
                 <button class="key key-equals" id="btnEq" onclick="pressEquals()"><span>=</span></button>
             </div>
         </div>
@@ -450,7 +456,7 @@
 
     </div>
 
-    <div class="hint">Keyboard supported &nbsp;·&nbsp; numerals · + · − · enter · backspace · esc</div>
+    <div class="hint">Keyboard supported &nbsp;·&nbsp; numerals · + · − · * · enter · backspace · esc</div>
 
 </div>
 
@@ -459,7 +465,7 @@
     const S = {
         input:        '0',
         total:        0,
-        tape:         [],      // [{type:'add'|'sub'|'total', value:Number}]
+        tape:         [],      // [{type:'add'|'sub'|'mul'|'total', value:Number}]
         hasDecimal:   false,
         justFinished: false,   // after = was pressed; next digit starts fresh
         lastOp:       '+',     // last operation pressed, for divider display
@@ -503,6 +509,10 @@
                 } else if (entry.type === 'sub') {
                     row.innerHTML =
                         `<span class="tape-sym">−</span>` +
+                        `<span class="tape-num">${fmtNum(entry.value)}</span>`;
+                } else if (entry.type === 'mul') {
+                    row.innerHTML =
+                        `<span class="tape-sym">×</span>` +
                         `<span class="tape-num">${fmtNum(entry.value)}</span>`;
                 } else {
                     row.innerHTML =
@@ -580,6 +590,24 @@
         render();
     }
 
+    function pressMultiply() {
+        const val = parseFloat(S.input) || 0;
+        S.total      *= val;
+        S.lastOp      = '×';
+        S.tape.push({ type: 'mul', value: val });
+        S.input        = '0';
+        S.hasDecimal   = false;
+        S.justFinished = false;
+
+        // Flash input
+        const el = document.getElementById('dispInput');
+        el.classList.remove('flash');
+        void el.offsetWidth;
+        el.classList.add('flash');
+
+        render();
+    }
+
     function pressEquals() {
         // Commit whatever is currently in input
         const val = parseFloat(S.input) || 0;
@@ -634,6 +662,7 @@
             case '.': case ',':  pressDecimal();  break;
             case '+':            pressPlus();     break;
             case '-':            pressMinus();    break;
+            case '*':            pressMultiply(); break;
             case 'Enter': case '=': pressEquals(); break;
             case 'Backspace':    pressBackspace(); break;
             case 'Escape': case 'Delete': pressClear(); break;
